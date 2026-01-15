@@ -34,9 +34,11 @@ This project follows the **Medallion Architecture** to ensure data quality and t
 
 ## Setup & Execution
 1. **Prerequisites**: Install Docker and Terraform.
-2. **Clone**: `git clone [tu-url]`
+2. **Clone**: `git clone [url]`
 3. **Environment**: Create a `.env` file (see `.env.example`).
 4. **Launch**: Run `docker-compose up -d` to start the infrastructure.
+5. **Environment Variables**: Load credentials from `.env` before running Terraform: `export $(grep -v '^#' .env | xargs)`
+6. **Deploy**: Initialize and apply infrastructure: `cd terraform && terraform init && terraform apply`
 
 ## Project Milestones (3-Week Sprint)
 ### Week 1: Infrastructure & Ingestion
