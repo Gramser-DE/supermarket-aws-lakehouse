@@ -1,0 +1,16 @@
+services:
+  terraform:
+    image: hashicorp/terraform:latest
+    volumes:
+      - ./terraform:/workspace
+    working_dir: /workspace
+    networks:
+      - supermarket_net
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - TF_VAR_aws_region=${AWS_REGION}
+
+networks:
+  supermarket_net:
+    external: true
