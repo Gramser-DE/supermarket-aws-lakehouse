@@ -14,7 +14,7 @@ Retailers face significant losses due to **stockouts** (out-of-stock events) and
 This project follows the **Medallion Architecture** to ensure data quality and traceability:
 - **Bronze Layer**: Raw sales events stored in S3 (JSON format).
 - **Silver Layer**: Cleaned and partitioned data using Spark (Parquet format).
-- **Gold Layer**: Business-level aggregates modeled in a **Star Schema** within PostgreSQL for low-latency analytical queries.
+- **Gold Layer**: Business-level aggregates modeled in a **Star Schema** served via PostgreSQL for low-latency analytical queries.
 
 ## Data Journey (The Pipeline)
 1. **Producer**: A Python script simulates POS transactions (sales events) and streams them to **AWS Kinesis**.
@@ -33,10 +33,14 @@ This project follows the **Medallion Architecture** to ensure data quality and t
 - **Containerization**: [Docker](https://www.docker.com/) & Docker Compose.
 
 ## Setup & Execution
-1. **Prerequisites**: Install Docker and Terraform.
-2. **Clone**: `git clone [tu-url]`
-3. **Environment**: Create a `.env` file (see `.env.example`).
-4. **Launch**: Run `docker-compose up -d` to start the infrastructure.
+
+1. **Prerequisites**: Install **Docker** and **Docker Compose**. (Project tested on Windows via **WSL2**).
+2. **Clone**: `git clone https://github.com/Gramser-DE/Supermarket-Stock-Lakehouse`
+3. **Environment**: Create a `.env` file in the root directory (refer to `.env.example`): `cp .env.example .env`
+4. **Launch Services**: Run `docker-compose up -d` to start the backend infrastructure (LocalStack, PostgreSQL, and Mage AI).
+5. **Deploy Infrastructure**: Use the containerized Terraform to provision S3 buckets and Kinesis streams:`docker-compose -f docker-compose.infra.yml run --rm terraform init` and
+   `docker-compose -f docker-compose.infra.yml run --rm terraform apply`
+6. **Verification**: Confirm that the resources (buckets: bronze, silver, gold) are active in LocalStack using a containerized AWS CLI: `docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 s3 ls`
 
 ## Project Milestones (3-Week Sprint)
 ### Week 1: Infrastructure & Ingestion

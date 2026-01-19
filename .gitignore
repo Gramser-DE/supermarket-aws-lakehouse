@@ -19,13 +19,20 @@ mage_data/
 .terraform/
 *.tfstate
 *.tfstate.backup
+.terraform.lock.hcl
 
 # --- Python & System ---
 __pycache__/
 *.py[cod]
 *$py.class
-.DS_Store
 .venv/
 env/
 venv/
 ENV/
+
+# --- OS & IDEs ---
+.DS_Store
+.vscode/
+
+# --- Logs ---
+*.log
