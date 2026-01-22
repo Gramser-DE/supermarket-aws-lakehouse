@@ -12,7 +12,11 @@ localstack_data/
 # --- Mage AI (Orchestrator) ---
 orchestrator/.preferences.yaml
 orchestrator/mage-ai.db
+orchestrator/db/
+orchestrator/logs/
 mage_data/
+.mage_variables.json
+orchestrator/pipelines/*/.variables/
 
 
 # --- Terraform ---
