@@ -1,5 +1,5 @@
 from typing import Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 if 'transformer' not in globals():
@@ -17,7 +17,7 @@ def transform(messages: List[Dict], *args, **kwargs):
         else:
             record = msg
 
-        record['ingested_at'] = datetime.utcnow().isoformat()
+        record['ingested_at'] = datetime.now(timezone.utc).isoformat()
         record['source_system'] = 'kinesis_producer'
 
         transformed_messages.append(record)

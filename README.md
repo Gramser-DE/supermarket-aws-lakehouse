@@ -8,7 +8,42 @@
 Retailers face significant losses due to **stockouts** (out-of-stock events) and **overstocking**. This project solves this by implementing a real-time stock management platform. By analyzing streaming sales events, the system provides immediate visibility and predictive alerts to ensure products are replenished exactly when needed.
 
 ## Architecture Diagram
-![Architecture Diagram](./docs/architecture_diagram.png) *(Work in progress)*
+
+```mermaid
+flowchart LR
+
+    classDef aws fill:#FF9900,stroke:#232F3E,color:white;
+    classDef python fill:#3776AB,stroke:white,color:white;
+    classDef mage fill:#7D4698,stroke:white,color:white;
+    classDef storage fill:#2E7D32,stroke:white,color:white;
+
+    subgraph "Data Source"
+        Producer["Producer<br/>(Synthetic Data)"]:::python
+    end
+
+    subgraph "AWS LocalStack"
+        Kinesis[("Kinesis<br/>'supermarket-sales-stream'")]:::aws
+        S3Bronze[("S3 Bucket<br/>'supermarket-bronze'")]:::storage
+    end
+
+    subgraph "Orchestration & Ingestion"
+        Mage("Mage AI<br/>Streaming Pipeline"):::mage
+    end
+
+    subgraph "Silver Layer (Working)"
+        Mage2("Mage AI<br/>Batch Transform"):::mage
+        S3Silver[("S3 Bucket<br/>'supermarket-silver'")]:::storage
+        Postgres[("PostgreSQL<br/>'silver_sales' table")]:::database
+    end
+
+    Producer -->|PutRecords| Kinesis
+    Kinesis -->|GetRecords| Mage
+    Mage -->|Raw Data .json| S3Bronze
+
+    S3Bronze -.->|Read JSON| Mage2
+    Mage2 -.->|Export Parquet| S3Silver
+    Mage2 -.->|Upsert SQL| Postgres
+```
 
 ## Architecture (Medallion + Lakehouse)
 This project follows the **Medallion Architecture** to ensure data quality and traceability:
@@ -35,26 +70,75 @@ This project follows the **Medallion Architecture** to ensure data quality and t
 ## Setup & Execution
 
 1. **Prerequisites**: Install **Docker** and **Docker Compose**. (Project tested on Windows via **WSL2**).
-2. **Clone**: `git clone https://github.com/Gramser-DE/Supermarket-Stock-Lakehouse`
-3. **Environment**: Create a `.env` file in the root directory (refer to `.env.example`): `cp .env.example .env`
-4. **Launch Services**: Run `docker-compose up -d` to start the backend infrastructure (LocalStack, PostgreSQL, and Mage AI).
-5. **Deploy Infrastructure**: Use the containerized Terraform to provision S3 buckets and Kinesis streams:`docker-compose -f docker-compose.infra.yml run --rm terraform init` and
-   `docker-compose -f docker-compose.infra.yml run --rm terraform apply`
-6. **Verification**: Confirm that the resources (buckets: bronze, silver, gold) are active in LocalStack using a containerized AWS CLI: `docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 s3 ls`
+
+2. **Clone**: 
+
+```bash 
+git clone https://github.com/Gramser-DE/Supermarket-Stock-Lakehouse
+```
+
+3. **Environment**: Create a `.env` file in the root directory (refer to `.env.example`): 
+
+```bash 
+cp .env.example .env
+```
+
+4. **Launch Services**: Run `docker-compose` to start the backend infrastructure (LocalStack, PostgreSQL, and Mage AI).
+
+```bash 
+docker-compose up -d
+```
+
+5. **Deploy Infrastructure**: Use the containerized Terraform to provision S3 buckets and Kinesis streams:
+
+```bash 
+docker-compose -f docker-compose.infra.yml run --rm terraform init
+docker-compose -f docker-compose.infra.yml run --rm terraform apply
+```
+
+6. **Verification**: Confirm that the resources (buckets: bronze, silver, gold) are active in LocalStack using a containerized AWS CLI: 
+
+```bash 
+docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 s3 ls
+```
+
+7. **Kinesis Verification**: Confirm that the stream is active and check its shards:
+
+```bash 
+docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 kinesis describe-stream --stream-name supermarket-sales-stream
+```
+
+8.  **Run Data Ingestion(Producer)**: Launch the synthetic data generator in a transient container: 
+
+```bash 
+docker run --rm -it   --network supermarket_net   --env-file .env   -v "$(pwd):/app"   -w /app   python:3.10-slim   sh -c "pip install boto3 -q && python scripts/producer.py"
+```
+
+9.  **Run Data Ingestion(Orchestrator)**:Access the Mage UI at `http://localhost:6789`, open the `kinesis_to_bronze_ingestion` pipeline, and press the `execute pipeline` button to start consuming records.
+
+10. **Verify Bronze Layer**: Validate that the raw JSON files are being persisted in the S3:
+
+```bash 
+docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 s3 ls s3://supermarket-bronze/sales_data/ --recursive
+```
 
 ## Project Milestones (3-Week Sprint)
 ### Week 1: Infrastructure & Ingestion
-- [x] Local environment with Docker & LocalStack.
-- [ ] IaC: Deploy S3 Buckets and Kinesis Streams with Terraform.
-- [ ] Build the Python Sales Producer (Synthetic Data).
-- [ ] Connect Kinesis to S3 Bronze.
+- [x] **Environment**: LocalStack & Docker Compose orchestration.
+- [x] **IaC**: Terraform provisioning for Kinesis Streams and S3 Bronze.
+- [x] **Data Generation**: Custom Python Producer for synthetic sales events.
+- [x] **Ingestion Pipeline**: Mage AI streaming from Kinesis to S3 Bronze.
 
-### Week 2: Orchestration & Processing
-- [ ] Setup Mage AI pipelines.
-- [ ] Implement Spark transformations (Bronze to Silver).
-- [ ] Data Quality checks and schema validation.
+### Week 2: Silver Layer & Relational Storage
+- [ ] **S3-to-Silver Batch Pipeline**: Develop a Mage AI batch process to consume raw JSON records from the Bronze layer.
+- [ ] **Data Refinement & Cleaning**: Implement schema enforcement, normalize timestamps (UTC), and handle null values.
+- [ ] **Dual-Destination Persistence**:
+    - **S3 Silver**: Export refined data in **Parquet** format for high-performance analytical storage.
+    - **PostgreSQL**: Upsert cleaned records into the `silver_sales` table for relational querying.
+- [ ] **Idempotency Logic**: Ensure data consistency and prevent duplicate records during batch reprocessing.
 
 ### Week 3: Serving & Analysis
-- [ ] Model the Gold Layer in PostgreSQL (Fact & Dimension tables).
-- [ ] Final end-to-end integration test.
-- [ ] Documentation of architectural decisions.
+- [ ] **Analytical Modeling**: Transition from flat tables to a **Star Schema** (Fact & Dimension tables).
+- [ ] **Business Logic**: Aggregate metrics (e.g., total sales per store, stock alerts) in the Gold layer.
+- [ ] **Data Serving**: Finalize PostgreSQL views for easy consumption by BI tools or APIs.
+- [ ] **Documentation & Final Test**: End-to-end validation and technical project write-up.

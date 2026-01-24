@@ -1,7 +1,7 @@
 import os
 import boto3
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from mage_ai.streaming.sinks.base_python import BasePythonSink
 
 if 'streaming_sink' not in globals():
@@ -22,7 +22,7 @@ class SupermarketS3Sink(BasePythonSink):
     def batch_write(self, messages):
         for msg in messages:
             
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+            timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
             filename = f"sales_data/{timestamp}.json"
             self.s3.put_object(
                 Bucket=self.bucket,
