@@ -1,67 +1,71 @@
 blocks:
 - all_upstream_blocks_executed: true
   color: null
-  configuration: {}
+  configuration:
+    file_source:
+      path: data_loaders/from_bronze.py
   downstream_blocks:
-  - transform_kinesis
+  - transform_bronze
   executor_config: null
   executor_type: local_python
   has_callback: false
   language: python
-  name: from_kinesis
-  retry_config: null
-  status: updated
+  name: from_bronze
+  retry_config: {}
+  status: executed
   timeout: null
   type: data_loader
   upstream_blocks: []
-  uuid: from_kinesis
-- all_upstream_blocks_executed: false
+  uuid: from_bronze
+- all_upstream_blocks_executed: true
   color: null
   configuration:
     file_source:
-      path: transformers/transform_kinesis.py
+      path: transformers/transform_bronze.py
   downstream_blocks:
-  - export_to_bronze_s3
+  - export_to_silver
   executor_config: null
   executor_type: local_python
   has_callback: false
   language: python
-  name: transform_kinesis
+  name: transform_bronze
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
   type: transformer
   upstream_blocks:
-  - from_kinesis
-  uuid: transform_kinesis
-- all_upstream_blocks_executed: false
+  - from_bronze
+  uuid: transform_bronze
+- all_upstream_blocks_executed: true
   color: null
-  configuration: {}
+  configuration:
+    file_source:
+      path: data_exporters/export_to_silver.py
   downstream_blocks: []
   executor_config: null
   executor_type: local_python
   has_callback: false
   language: python
-  name: export_to_bronze_s3
+  name: export_to_silver
   retry_config: null
-  status: updated
+  status: executed
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - transform_kinesis
-  uuid: export_to_bronze_s3
+  - transform_bronze
+  uuid: export_to_silver
 cache_block_output_in_memory: false
 callbacks: []
 concurrency_config: {}
 conditionals: []
-created_at: '2026-01-22 08:45:58.232187+00:00'
+created_at: '2026-02-02 09:32:34.771562+00:00'
 data_integration: null
 description: null
 executor_config: {}
 executor_count: 1
 executor_type: null
 extensions: {}
-name: kinesis_to_bronze_ingestion
+name: silver_ingestion
 notification_config: {}
 remote_variables_dir: null
 retry_config: {}
@@ -70,7 +74,7 @@ settings:
   triggers: null
 spark_config: {}
 tags: []
-type: streaming
-uuid: kinesis_to_bronze_ingestion
+type: python
+uuid: silver_ingestion
 variables_dir: /home/src/mage_data/orchestrator
 widgets: []

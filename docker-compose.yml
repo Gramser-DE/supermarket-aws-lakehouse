@@ -2,20 +2,26 @@ services:
   # Orchestrator: Mage AI
   mage:
     image: mageai/mageai:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.mage
     command: mage start ${MAGE_PROJECT_NAME}
     env_file:
       - .env
     environment:
       USER_CODE_PATH: /home/src/${MAGE_PROJECT_NAME}
       MAGE_DATABASE_CONNECTION_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION}
+      REQUIRE_USER_AUTHENTICATION: "0"
+      MAGE_RESOURCES_MANAGER_ENABLED: "0"
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
     ports:
       - "6789:6789"
     volumes:
       - .:/home/src
     restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # Database: PostgreSQL 
   postgres:

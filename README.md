@@ -130,9 +130,9 @@ docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --e
 - [x] **Ingestion Pipeline**: Mage AI streaming from Kinesis to S3 Bronze.
 
 ### Week 2: Silver Layer & Relational Storage
-- [ ] **S3-to-Silver Batch Pipeline**: Develop a Mage AI batch process to consume raw JSON records from the Bronze layer.
-- [ ] **Data Refinement & Cleaning**: Implement schema enforcement, normalize timestamps (UTC), and handle null values.
-- [ ] **Dual-Destination Persistence**:
+- [x] **S3-to-Silver Batch Pipeline**: Develop a Mage AI batch process to consume raw JSON records from the Bronze layer.
+- [x] **Data Refinement & Cleaning**: Implement schema enforcement, normalize timestamps (UTC), and handle null values.
+- [x] **Dual-Destination Persistence**:
     - **S3 Silver**: Export refined data in **Parquet** format for high-performance analytical storage.
     - **PostgreSQL**: Upsert cleaned records into the `silver_sales` table for relational querying.
 - [ ] **Idempotency Logic**: Ensure data consistency and prevent duplicate records during batch reprocessing.
