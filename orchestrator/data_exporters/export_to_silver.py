@@ -10,26 +10,54 @@ def export_data(silver_path, *args, **kwargs):
     
     spark = SparkSession.builder.getOrCreate()  
 
-    df_final = spark.read.parquet(silver_path)
+    df_new_data = spark.read.parquet(silver_path)
     
-    pg_user = os.getenv('POSTGRES_USER')
-    pg_pass = os.getenv('POSTGRES_PASSWORD')
-    pg_host = os.getenv('POSTGRES_HOST') 
-    pg_port = os.getenv('POSTGRES_PORT')
-    pg_db = os.getenv('POSTGRES_DB')
+    pg_url = f"jdbc:postgresql://{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
+    pg_props = {
+        "user": os.getenv('POSTGRES_USER'),
+        "password": os.getenv('POSTGRES_PASSWORD'),
+        "driver": "org.postgresql.Driver"
+    }
+
+    table_staging = "public.stg_sales_silver"
+    table_final = "public.sales_silver"
+
+    print(f"⏳ [INFO] [WRITE] Writing to Staging Table ({table_staging})...")
+    df_new_data.write.jdbc(url=pg_url, table=table_staging, mode="overwrite", properties=pg_props)
+
+
+    print(f"🔄 [INFO] [MERGE] Executing Upsert from {table_staging} to {table_final}...")
+
+    upsert_query = f"""
+    INSERT INTO {table_final} (
+        product_category, product_name, quantity, unit_price, total_price, 
+        store_id, source_system, transaction_id, sale_timestamp, ingested_at, processed_at
+    )
+    SELECT 
+        product_category, product_name, quantity, unit_price, total_price, 
+        store_id, source_system, transaction_id, sale_timestamp, ingested_at, processed_at
+    FROM {table_staging}
+    ON CONFLICT (transaction_id) DO UPDATE SET
+        product_category = EXCLUDED.product_category,
+        product_name = EXCLUDED.product_name, 
+        quantity = EXCLUDED.quantity,         
+        unit_price = EXCLUDED.unit_price,
+        total_price = EXCLUDED.total_price,
+        sale_timestamp = EXCLUDED.sale_timestamp, 
+        processed_at = EXCLUDED.processed_at;
+    """
     
-    jdbc_url = f"jdbc:postgresql://{pg_host}:{pg_port}/{pg_db}"
-    
-    print(f"[INFO] [CONNECT] Establishing JDBC connection to {pg_host}:{pg_port}/{pg_db} (User: {pg_user})")
-    
-    df_final.write \
-        .format("jdbc") \
-        .option("url", jdbc_url) \
-        .option("dbtable", "public.sales_silver") \
-        .option("user", pg_user) \
-        .option("password", pg_pass) \
-        .option("driver", "org.postgresql.Driver") \
-        .mode("append") \
-        .save()
+    try:
+        connection = spark._sc._gateway.jvm.java.sql.DriverManager.getConnection(
+            pg_url, pg_props["user"], pg_props["password"]
+        )
+        statement = connection.createStatement()
+        statement.execute(upsert_query)
+        statement.execute(f"DROP TABLE IF EXISTS {table_staging}")
+        statement.close()
+        connection.close()
+        print(f"✅ [SUCCESS] [EXPORT] Idempotent load completed. No duplicates created.")
         
-    print("✅ [SUCCESS] [EXPORT] PostgreSQL data load completed successfully.")
+    except Exception as e:
+        print(f"❌ [ERROR] [DB_TRANSACTION] Failed to execute Upsert: {e}")
+        raise e
