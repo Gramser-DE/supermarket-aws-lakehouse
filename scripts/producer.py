@@ -35,6 +35,7 @@ def generate_sale():
         "product_name": product["name"],
         "category": product["category"],
         "quantity": quantity,
+        "unit_price": product["price"],
         "total_price": round(product["price"] * quantity, 2),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "store_id": "Toledo_01"
