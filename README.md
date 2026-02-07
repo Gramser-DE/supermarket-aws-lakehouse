@@ -11,38 +11,46 @@ Retailers face significant losses due to **stockouts** (out-of-stock events) and
 
 ```mermaid
 flowchart LR
-
     classDef aws fill:#FF9900,stroke:#232F3E,color:white;
     classDef python fill:#3776AB,stroke:white,color:white;
     classDef mage fill:#7D4698,stroke:white,color:white;
     classDef storage fill:#2E7D32,stroke:white,color:white;
+    classDef future fill:#f5f5f5,stroke:#d2d2d2,color:#d2d2d2,stroke-dasharray: 5 5;
 
     subgraph "Data Source"
         Producer["Producer<br/>(Synthetic Data)"]:::python
     end
 
-    subgraph "AWS LocalStack"
+    subgraph "Bronze Layer"
+        direction TB
         Kinesis[("Kinesis<br/>'supermarket-sales-stream'")]:::aws
+        Mage("Mage AI (Orchestration)<br/>Streaming Pipeline"):::mage
         S3Bronze[("S3 Bucket<br/>'supermarket-bronze'")]:::storage
+        
     end
 
-    subgraph "Orchestration & Ingestion"
-        Mage("Mage AI<br/>Streaming Pipeline"):::mage
-    end
-
-    subgraph "Silver Layer (Working)"
-        Mage2("Mage AI<br/>Batch Transform"):::mage
+    subgraph "Silver Layer"
+        direction TB
+        Mage2("Mage AI<br/>Batch Transform (Spark)"):::mage
         S3Silver[("S3 Bucket<br/>'supermarket-silver'")]:::storage
-        Postgres[("PostgreSQL<br/>'silver_sales' table")]:::database
+        Postgres[("PostgreSQL (RDS Sim)<br/>'sales_silver' table")]:::database
+    end
+
+    subgraph "Gold Layer (Coming Soon)"
+        Mage3("Analytical<br/>Aggregations"):::future
+        StarSchema[("Star Schema<br/>Fact/Dimensions")]:::future
     end
 
     Producer -->|PutRecords| Kinesis
     Kinesis -->|GetRecords| Mage
     Mage -->|Raw Data .json| S3Bronze
 
-    S3Bronze -.->|Read JSON| Mage2
-    Mage2 -.->|Export Parquet| S3Silver
-    Mage2 -.->|Upsert SQL| Postgres
+    S3Bronze -->|Read JSON| Mage2
+    Mage2 -->|Export Parquet| S3Silver
+    Mage2 -->|Upsert SQL| Postgres
+
+    S3Silver -.-> Mage3
+    Mage3 -.-> StarSchema
 ```
 
 ## Architecture (Medallion + Lakehouse)
@@ -68,6 +76,11 @@ This project follows the **Medallion Architecture** to ensure data quality and t
 - **Containerization**: [Docker](https://www.docker.com/) & Docker Compose.
 
 ## Setup & Execution
+
+### Phase 1: Infrastructure & Bronze Layer 
+
+<details>
+<summary><b>Click to show Steps 1 to 10: Environment & Ingestion</b></summary>
 
 1. **Prerequisites**: Install **Docker** and **Docker Compose**. (Project tested on Windows via **WSL2**).
 
@@ -122,22 +135,49 @@ docker run --rm -it   --network supermarket_net   --env-file .env   -v "$(pwd):/
 docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 s3 ls s3://supermarket-bronze/sales_data/ --recursive
 ```
 
-## Project Milestones (3-Week Sprint)
-### Week 1: Infrastructure & Ingestion
+</details>
+
+### Phase 2: Silver Layer
+<details>
+<summary><b>Click to show Steps 11 to 13: Data Refinement & Loading:</b></summary>
+
+11. **Initialize Data Warehouse**: Apply the SQL schema to PostgreSQL:
+
+```bash 
+source .env && docker exec -i supermarket-aws-lakehouse-postgres-1 psql -U $POSTGRES_USER -d $POSTGRES_DB < scripts/init_silver_db.sql
+
+source .env && docker exec -it supermarket-aws-lakehouse-postgres-1 psql -U $POSTGRES_USER -d $POSTGRES_DB -c "\dt sales_silver"
+```
+
+12. **Run Transformation Pipeline (Orchestrator)**:Access the Mage UI at `http://localhost:6789`, open the `bronze_to_silver_processing` pipeline, and click `Run@once` button to start the processing and loading phase.
+
+
+13. **Verify Data**: Check that refined Parquet files exist in S3 and query the final PostgreSQL table to validate data integrity:
+
+```bash 
+docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --endpoint-url=http://localstack:4566 s3 ls s3://supermarket-silver/ --recursive
+
+source .env && docker exec -it $POSTGRES_HOST psql -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT * FROM sales_silver LIMIT 5;"
+```
+
+</details>
+
+## Project Milestones 
+### Phase 1: Infrastructure & Ingestion
 - [x] **Environment**: LocalStack & Docker Compose orchestration.
 - [x] **IaC**: Terraform provisioning for Kinesis Streams and S3 Bronze.
 - [x] **Data Generation**: Custom Python Producer for synthetic sales events.
 - [x] **Ingestion Pipeline**: Mage AI streaming from Kinesis to S3 Bronze.
 
-### Week 2: Silver Layer & Relational Storage
+### Phase 2: Silver Layer & Relational Storage
 - [x] **S3-to-Silver Batch Pipeline**: Develop a Mage AI batch process to consume raw JSON records from the Bronze layer.
 - [x] **Data Refinement & Cleaning**: Implement schema enforcement, normalize timestamps (UTC), and handle null values.
 - [x] **Dual-Destination Persistence**:
     - **S3 Silver**: Export refined data in **Parquet** format for high-performance analytical storage.
     - **PostgreSQL**: Upsert cleaned records into the `silver_sales` table for relational querying.
-- [ ] **Idempotency Logic**: Ensure data consistency and prevent duplicate records during batch reprocessing.
+- [x] **Idempotency Logic**: Ensure data consistency and prevent duplicate records during batch reprocessing.
 
-### Week 3: Serving & Analysis
+### Phase 3: Serving & Analysis
 - [ ] **Analytical Modeling**: Transition from flat tables to a **Star Schema** (Fact & Dimension tables).
 - [ ] **Business Logic**: Aggregate metrics (e.g., total sales per store, stock alerts) in the Gold layer.
 - [ ] **Data Serving**: Finalize PostgreSQL views for easy consumption by BI tools or APIs.
