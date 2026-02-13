@@ -1,6 +1,6 @@
 resource "aws_kinesis_stream" "supermarket_stream" {
   name             = "supermarket-sales-stream"
-  shard_count      = 1
+  shard_count      = 2
   retention_period = 24
 
   shard_level_metrics = [
