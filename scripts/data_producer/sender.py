@@ -23,7 +23,7 @@ def get_kinesis_client():
 def send_records(kinesis_client, records, max_retries=3):
 
     attempt = 0
-    records_to_send = records
+    records_to_send = records.copy()
 
     while attempt <= max_retries and len(records_to_send) > 0:
         try:
