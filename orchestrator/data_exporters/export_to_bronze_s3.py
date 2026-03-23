@@ -20,12 +20,19 @@ class SupermarketS3Sink(BasePythonSink):
         self.bucket = os.getenv('S3_BUCKET_BRONZE')
 
     def batch_write(self, messages):
-        for msg in messages:
-            
-            timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
-            filename = f"sales_data/{timestamp}.json"
-            self.s3.put_object(
-                Bucket=self.bucket,
-                Key=filename,
-                Body=json.dumps(msg)
-            )
+        if not messages:
+            return
+
+        now = datetime.now(timezone.utc)
+        partition = f"year={now.year}/month={now.month:02d}/day={now.day:02d}"
+        timestamp = now.strftime('%H%M%S_%f')
+        key = f"sales_data/{partition}/{timestamp}.ndjson"
+
+        body = "\n".join(json.dumps(msg) for msg in messages)
+
+        self.s3.put_object(
+            Bucket=self.bucket,
+            Key=key,
+            Body=body
+        )
+        print(f"[INFO] Written {len(messages)} record(s) to s3://{self.bucket}/{key}")
