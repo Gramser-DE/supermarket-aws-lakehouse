@@ -1,6 +1,6 @@
 import time
 import json
-from scripts.data_producer.generator import generate_sale
+from scripts.data_producer.generator import generate_basket
 from scripts.data_producer.sender import get_kinesis_client, send_records
 from scripts.data_producer.config import STREAM_NAME
 
@@ -13,12 +13,13 @@ def run():
     batch_buffer = []
     try:
         while True:
-            sale = generate_sale()
-            record = {
-                "Data": json.dumps(sale),
-                "PartitionKey": sale["transaction_id"] 
-            }
-            batch_buffer.append(record)
+            basket = generate_basket()
+            for sale in basket:
+                record = {
+                    "Data": json.dumps(sale),
+                    "PartitionKey": sale["transaction_id"]
+                }
+                batch_buffer.append(record)
 
             if len(batch_buffer) >= BATCH_SIZE:
                 send_records(kinesis, batch_buffer)

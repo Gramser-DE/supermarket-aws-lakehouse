@@ -14,6 +14,10 @@ STORES = [
     "Barcelona_01", "Barcelona_02"
     ]
 
+PAYMENT_METHODS = ["Credit Card", "Cash", "App"]
+
+CLIENT_TYPES = ["Regular", "Premium", "New"]
+
 PRODUCTS = [
     {"id": "P001","name": "Milk", "category": "Dairy", "price": 1.20},
     {"id": "P002","name": "Bread", "category": "Bakery", "price": 0.85},
