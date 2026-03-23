@@ -124,7 +124,7 @@ docker run --rm -it --network supermarket_net --env-file .env amazon/aws-cli --e
 8.  **Run Data Ingestion(Producer)**: Launch the synthetic data generator in a transient container: 
 
 ```bash 
-docker run --rm -it   --network supermarket_net   --env-file .env   -v "$(pwd):/app"   -w /app   python:3.10-slim   sh -c "pip install boto3 -q && python scripts/producer.py"
+docker run --rm -it   --network supermarket_net   --env-file .env   -v "$(pwd):/app"   -w /app   python:3.10-slim   sh -c "pip install boto3 -q && python -m scripts.data_producer.main"
 ```
 
 9.  **Run Data Ingestion(Orchestrator)**:Access the Mage UI at `http://localhost:6789`, open the `kinesis_to_bronze_ingestion` pipeline, and press the `execute pipeline` button to start consuming records.
@@ -161,24 +161,3 @@ source .env && docker exec -it $POSTGRES_HOST psql -U $POSTGRES_USER -d $POSTGRE
 ```
 
 </details>
-
-## Project Milestones 
-### Phase 1: Infrastructure & Ingestion
-- [x] **Environment**: LocalStack & Docker Compose orchestration.
-- [x] **IaC**: Terraform provisioning for Kinesis Streams and S3 Bronze.
-- [x] **Data Generation**: Custom Python Producer for synthetic sales events.
-- [x] **Ingestion Pipeline**: Mage AI streaming from Kinesis to S3 Bronze.
-
-### Phase 2: Silver Layer & Relational Storage
-- [x] **S3-to-Silver Batch Pipeline**: Develop a Mage AI batch process to consume raw JSON records from the Bronze layer.
-- [x] **Data Refinement & Cleaning**: Implement schema enforcement, normalize timestamps (UTC), and handle null values.
-- [x] **Dual-Destination Persistence**:
-    - **S3 Silver**: Export refined data in **Parquet** format for high-performance analytical storage.
-    - **PostgreSQL**: Upsert cleaned records into the `silver_sales` table for relational querying.
-- [x] **Idempotency Logic**: Ensure data consistency and prevent duplicate records during batch reprocessing.
-
-### Phase 3: Serving & Analysis
-- [ ] **Analytical Modeling**: Transition from flat tables to a **Star Schema** (Fact & Dimension tables).
-- [ ] **Business Logic**: Aggregate metrics (e.g., total sales per store, stock alerts) in the Gold layer.
-- [ ] **Data Serving**: Finalize PostgreSQL views for easy consumption by BI tools or APIs.
-- [ ] **Documentation & Final Test**: End-to-end validation and technical project write-up.
