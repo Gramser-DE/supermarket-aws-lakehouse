@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from pyspark.sql import SparkSession
 if 'data_loader' not in globals():
     from mage_ai.data_preparation.decorators import data_loader
@@ -35,9 +36,13 @@ def load_data(*args, **kwargs):
     print(f"[SUCCESS] Spark {spark.version} session established.")
 
     try:
-        bronze_path = f"s3a://{bucket}/{prefix}/*.json"
-        print(f"[INFO] [READ] Reading from: {bronze_path}")
-        df = spark.read.option("multiline", "true").json(bronze_path)
+        today = date.today()
+        bronze_path = (
+            f"s3a://{bucket}/{prefix}"
+            f"/year={today.year}/month={today.month:02d}/day={today.day:02d}"
+        )
+        print(f"[INFO] [READ] Reading partition: {bronze_path}")
+        df = spark.read.json(bronze_path)
         print(f"[SUCCESS] [LOAD] Total records loaded: {df.count()}")
         return bronze_path
     except Exception as e:
