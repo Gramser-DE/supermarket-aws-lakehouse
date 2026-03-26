@@ -1,4 +1,4 @@
-# NOTE — Architectural decision: why does the transformer write to S3?
+# NOTE — Architectural decision: 
 #
 # Ideally, all I/O (S3 + PostgreSQL) would live in the data exporter, keeping
 # this transformer as a pure transformation step. However, Mage AI runs each
@@ -12,8 +12,7 @@
 # Therefore, S3 acts as the data bus between this transformer and the exporter:
 #   - transform_bronze  →  validates + writes to S3 Silver (parquet) + S3 Quarantine
 #   - export_to_silver  →  reads from S3 Silver, upserts into PostgreSQL
-#
-# This is the native Mage AI pattern for scalable Spark pipelines.
+
 
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
@@ -51,8 +50,8 @@ def transform(bronze_path, *args, **kwargs):
     # bronze:     s3a://supermarket-bronze/sales_data/year=YYYY/month=MM/day=DD
     # silver:     s3a://supermarket-silver/sales_data_parquet/year=YYYY/month=MM/day=DD
     # quarantine: s3a://supermarket-silver/quarantine/year=YYYY/month=MM/day=DD
-    silver_bucket   = os.getenv('S3_BUCKET_BRONZE').replace('bronze', 'silver')
-    date_partition  = bronze_path.split("/sales_data/")[1]          # "year=.../month=.../day=..."
+    silver_bucket   = os.getenv('S3_BUCKET_SILVER')
+    date_partition  = bronze_path.split("/sales_data/")[1]  # "year=.../month=.../day=..."
     silver_path     = f"s3a://{silver_bucket}/sales_data_parquet/{date_partition}"
     quarantine_path = f"s3a://{silver_bucket}/quarantine/{date_partition}"
 
